@@ -67,7 +67,7 @@ class ControlsRow(object):
                     context, 'bootstrap/layout/controls_row.html',
                     layout_object=self)
 
-    return render_to_string(self.template,
+        return render_to_string(self.template,
             Context({'controls_row':self, 'fields_output': fields_output}))
 
 class FormActions(LayoutObject):
