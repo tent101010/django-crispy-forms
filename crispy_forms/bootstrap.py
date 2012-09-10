@@ -48,6 +48,27 @@ class AppendedPrependedText(Field):
                         'active': getattr(self, "active", False)})
         return render_field(self.field, form, form_style, context, template=self.template, attrs=self.attrs)
 
+class ControlsRow(object):
+    """ Bootstrap layout object. Wraps fields in a <div class="controls-row"> """
+    template = "bootstrap/layout/controls_row.html"
+
+    def __init__(self, *fields, **kwargs):
+        self.fields = fields
+        self.css_class = kwargs.get('css_class', u'ctrlHolder')
+        self.css_id = kwargs.get('css_id', None )
+        self.template = kwargs.get('template', self.template)
+
+    def render(self, form, form_style, context):
+        fields = []
+        fields_output = u''
+        self.bound_fields = []
+        for field in self.fields:
+            fields_output += render_field(field, form, form_style,
+                    context, 'bootstrap/layout/controls_row.html',
+                    layout_object=self)
+
+    return render_to_string(self.template,
+            Context({'controls_row':self, 'fields_output': fields_output}))
 
 class FormActions(LayoutObject):
     """
