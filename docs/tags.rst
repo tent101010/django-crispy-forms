@@ -22,13 +22,13 @@ For the rest of this document we will use the following example form of how to u
         )
 
         favorite_food = forms.CharField(
-            label = "What is you favorite food?",
+            label = "What is your favorite food?",
             max_length = 80,
             required = True,
         )
 
         favorite_color = forms.CharField(
-            label = "What is you favorite color?",
+            label = "What is your favorite color?",
             max_length = 80,
             required = True,
         )
@@ -104,11 +104,11 @@ This is exactly the html that you would get::
             </div>
             <div id="div_id_favorite_food" class="ctrlHolder">
                 <label for="id_favorite_food" class="requiredField">What is you favorite food?<span class="asteriskField">*</span></label>
-                <input id="id_favorite_food" class="textinput textInput" type="text" name="favorite_food" maxlength="80" />
+                <input id="id_favorite_food" class="textinput textInput" type="text" name="favorite_food" maxlength="80" required="required" />
             </div>
             <div id="div_id_favorite_color" class="ctrlHolder">
                 <label for="id_favorite_color" class="requiredField">What is you favorite color?<span class="asteriskField">*</span></label>
-                <input id="id_favorite_color" class="textinput textInput" type="text" name="favorite_color" maxlength="80" />
+                <input id="id_favorite_color" class="textinput textInput" type="text" name="favorite_color" maxlength="80" required="required" />
             </div>
             <div id="div_id_favorite_number" class="ctrlHolder">
                 <label for="id_favorite_number">Favorite number</label>
@@ -203,12 +203,25 @@ Rendering formsets
 
 This is how you would render the formset. Note that this time you need to specify the helper explicitly::
 
-    {% crispy formset formset.form.helper %}
+    {% crispy example_formset example_formset.form.helper %}
+
+If your formset's forms have different layouts, because you manipulated them, you will have to do::
+
+    {% for form in example_formset %}
+        {% crispy form %}
+    {% endfor %}
+
+Note, make sure that you have ``form_tag`` attribute set to ``False`` in your formset's forms, otherwise you will get 3 individual forms rendered::
+
+    class ExampleForm(forms.Form):
+        self.helper = FormHelper()
+        self.helper.form_tag = False
+        [...]
 
 Note that you can still use a helper (in this case we are using the helper of the form used for building the formset). The main difference here is that helper attributes are applied to the form structure, while the layout is applied to the formset’s forms. Rendering formsets injects some extra context in the layout rendering so that you can do things like::
 
     HTML("{% if forloop.first %}Message displayed only in the first form of a formset forms list{% endif %}",
-    Fielset("Item {{ forloop.counter }}", 'field-1', [...])
+    Fieldset("Item {{ forloop.counter }}", 'field-1', [...])
 
 Basically you can access a ``forloop`` Django node, as if you were rendering your formsets forms using a for loop.
 
@@ -227,6 +240,12 @@ Helper attributes you can set
         url(r'^show/profile/$', 'show_my_profile_view', name = 'show_my_profile')
 
     You can also point it to a URL ‘/whatever/blabla/’.
+
+**attrs**
+    Added in 1.2.0, a dictionary to set any kind of form attributes. Underscores in keys are translated into hyphens. The recommended way when you need to set several form attributes in order to keep your helper tidy::
+
+        ``{'id': 'form-id', 'data_id': '/whatever'}``
+        <form id="form-id" data-id="/whatever" ...>
 
 **form_id**
     Specifies form DOM id attribute. If no id provided then no id attribute is created on the form.
@@ -252,297 +271,19 @@ Helper attributes you can set
 **render_unmentioned_fields = False**
     By default django-crispy-forms renders the layout specified if it exists strictly, which means it only renders what the layout mentions, unless your form has ``Meta.fields`` and ``Meta.exclude`` defined, in that case it uses them. If you want to render unmentioned fields in the layout, for example if you are worried about forgetting mentioning them you have to set this property to ``True``. It defaults to ``False``.
 
+Bootstrap Helper attributes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+There are currently some helper attributes that only have functionality for a specific template pack. These doesn't necessarily mean that they won't be supported for other template packs in the future.
+
 **help_text_inline = False**
-    Use this helper attribute to set if help texts if you are using bootstrap template pack, should be rendered ``help-inline`` or using ``help-block``. By default ``help-block`` is used.
+    Sets whether help texts should be rendered inline or block. If set to ``True`` help texts will be rendered ``help-inline`` class, otherwise using ``help-block``. By default text messages are rendered in block mode.
 
+**error_text_inline = True**
+    Sets whether to render error messages inline or block. If set to ``True`` errors will be rendered using ``help-inline`` class, otherwise using ``help-block``. By default error messages are rendered in inline mode.
 
-=======
-Layouts 
-=======
+**html5_required = False**
+    When set to ``True`` all required fields inputs will be rendered with HTML5 ``required=required`` attribute.
 
-Fundamentals
-~~~~~~~~~~~~
 
-Django-crispy-forms defines another powerful class called ``Layout``, which allows you to change the way the form fields are rendered. This allows you to set the order of the fields, wrap them in divs or other structures, add html, set ids, classes or attributes to whatever you want, etc. And all that without writing a custom form template, using programmatic layouts. Just attach the layout to a helper, layouts are optional, but probably the most powerful thing django-crispy-forms has to offer.
-
-A ``Layout`` is constructed by layout objects, which can be thought of as form components. You assemble your layout using those. For the time being, your choices are: ``ButtonHolder``, ``Button``, ``Div``, ``Row``, ``Column``, ``Fieldset``, ``MultiField``, ``HTML``, ``TemplateInclude``, ``Hidden``, ``Reset``, ``Submit``, ``Field``, ``AppendedText``, ``PrependedText``, ``FormActions``.
-
-All these components are explained later in :ref:`layout objects`. What you need to know now about them is that every component renders a different template and has a different purpose. Let’s write a couple of different layouts for our form, continuing with our form class example (note that the full form is not shown again).
-
-Some layout objects are specific to a template pack. For example ``ButtonHolder`` is for ``uni_form`` template_pack, while ``FormActions`` is for ``bootstrap`` template pack.
-
-Let's add a layout to our helper::
-
-    from crispy_forms.helper import FormHelper
-    from crispy_forms.layout import Layout, Fieldset
-
-    class ExampleForm(forms.Form):
-        [...]
-        def __init__(self, *args, **kwargs):
-            self.helper = FormHelper()
-            self.helper.layout = Layout(
-                Fieldset(
-                    'first arg is the legend of the fieldset',
-                    'like_website',
-                    'favorite_number',
-                    'favorite_color',
-                    'favorite_food',
-                    'notes'
-                ),
-                ButtonHolder(
-                    Submit('submit', 'Submit', css_class='button white')
-                )
-            )
-            super(ExampleForm, self).__init__(*args, **kwargs)
-
-When we render the form now using::
-
-    {% load crispy_forms_tags %}
-    {% crispy example_form %}
-
-We will get the fields wrapped in a fieldset, whose legend will be set to 'first arg is the legend of the fieldset'. The fields' order will be: ``like_website``, ``favorite_number``, ``favorite_color``, ``favorite_food`` and ``notes``. We also get a submit button wrapped in a ``<div class="buttonHolder">`` which uni-form CSS positions in a nice way. That button has its CSS class set to ``button white``.
-
-This is just the tip of the iceberg: now imagine you want to add an explanation for what notes are, you can use ``HTML`` layout object::
-
-    Layout(
-        Fieldset(
-            'Tell us your favorite stuff {{ username }}',
-            'like_website',
-            'favorite_number',
-            'favorite_color',
-            'favorite_food',
-            HTML("""
-                <p>We use notes to get better, <strong>please help us {{ username }}</strong></p> 
-            """),
-            'notes'
-        )
-    )
-
-As you'll notice the fieldset legend is context aware and you can write it as if it were a chunk of a template where the form will be rendered. The ``HTML`` object will add a message before the notes input and it's also context aware. Note how you can wrap layout objects into other layout objects. Layout objects ``Fieldset``, ``Div``, ``MultiField`` and ``ButtonHolder`` can hold other Layout objects within. Let's do an alternative layout for the same form::
-
-    Layout(
-        MultiField(
-            'Tell us your favorite stuff {{ username }}',
-            Div(
-                'like_website',
-                'favorite_number',
-                css_id = 'special-fields'
-            ),
-            'favorite_color',
-            'favorite_food',
-            'notes'
-        )
-    )
-
-This time we are using a ``MultiField``, which is a layout object that as a general rule can be used in the same places as ``Fieldset``. The main difference is that this renders all the fields wrapped in a div and when there are errors in the form submission, they are shown in a list instead of each one surrounding the field. Sometimes the best way to see what layout objects do, is just try them and play with them a little bit.
-
-
-.. _`layout objects`:
-
-Universal layout objects
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-These ones live in module ``crispy_forms.layout``. These are layout objects that are not specific to a template pack. We'll go one by one, showing usage examples:
-
-- **Div**: It wraps fields in a ``<div>``::
-
-    Div('form_field_1', 'form_field_2', 'form_field_3', ...)
-
-**NOTE** Mainly in all layout objects you can set kwargs that will be used as HTML attributes. As ``class`` is a reserved keyword in Python, for it you will have to use ``css_class``. For example::
-
-    Div('form_field_1', style="background: white;", title="Explication title", css_class="bigdivs")
-
-- **HTML**: A very powerful layout object. Use it to render pure html code. In fact it behaves as a Django template and it has access to the whole context of the page where the form is being rendered. This layout object doesn't accept any extra parameters than the html to render, you cannot set html attributes like in ``Div``::
-
-    HTML("{% if success %} <p>Operation was successful</p> {% endif %}")
-
-- **Field**: Extremely useful layout object. You can use it to set attributes in a field or render a specific field with a custom template. This way you avoid having to explicitly override the field's widget and pass an ugly ``attrs`` dictionary::
-
-    Field('password', id="password-field", css_class="passwordfields", title="Explanation")
-    Field('slider', template="custom-slider.html")
-
-This layout object can be used to easily extend Django's widgets.
-
-- **Submit**: Used to create a submit button. First parameter is the ``name`` attribute of the button, second parameter is the ``value`` attribute::
-
-    Submit('search', 'SEARCH')
-    Submit('search', 'SEARCH')
-
-Renders to::
-    
-    <input type="submit" name="search" value="SEARCH" class="submit submitButton" id="submit-id-search" />
-
-- **Hidden**: Used to create a hidden input::
-
-    Hidden('name', 'value')
-
-- **Button**: Creates a button::
-    
-    Button('name', 'value')
-    
-- **Reset**: Used to create a reset input::
-
-    reset = Reset('name', 'value')
-
-- **Fieldset**: It wraps fields in a ``<fieldset>``. The first parameter is the text for the fieldset legend, as we've said it behaves like a Django template::
-
-    Fieldset("Text for the legend {{ username }}",
-        'form_field_1',
-        'form_field_2'
-    )
-
-Uni-form layout objects
-~~~~~~~~~~~~~~~~~~~~~~~
-
-These ones live in module ``crispy_forms.layout``. Probably in the future they will be moved out to a ``uni_form`` module:
-
-- **ButtonHolder**: It wraps fields in a ``<div class=”buttonHolder”>``, which uni-form positions in a nice way. This is where form's submit buttons go in uni-form::
-
-    ButtonHolder(
-        HTML("<span class="hidden">✓ Saved data</span>"),
-        Submit('save', 'Save')
-    )
-
-- **MultiField**: It wraps fields in a ``<div>`` with a label on top. When there are errors in the form submission it renders them in a list instead of each one surrounding the field::
-
-    MultiField("Text for the label {{ username }}",
-        'form_field_1',
-        'form_field_2'
-    )
-
-Bootstrap Layout objects
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-This ones live in module ``crispy_forms.bootstrap``.
-
-- **FormActions**: It wraps fields in a ``<div class="form-actions">``. This is a bootstrap layout object to wrapp form's submit buttons::
-
-    FormActions(
-        Submit('save', 'save', css_class="btn-primary")
-    )
-
-- **AppendedText**: It renders a bootstrap appended text input. The first parameter is the name of the field to add appended text to, then the appended text which can be HTML like. There is an optional parameter ``active``, by default set to ``False``, that you can set to a boolean to render appended text active::
-
-    AppendedText('field_name', 'appended text to show')
-    AppendedText('field_name', 'appended text to show', active=True)
-
-- **PrependedText**: It renders a bootstrap prepended text input. The first parameter is the name of the field to add prepended text to, then the prepended text which can be HTML like. There is an optional parameter ``active``, by default set to ``False``, that you can set to a boolean to render prepended text active::
-
-    PrependedText('field_name', '<b>Prepended text</b> to show')
-
-
-Overriding layout objects templates
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The mentioned set of :ref:`layout objects` has been thoroughly designed to be flexible, standard compatible and support Django form features. Every Layout object is associated to a different template that lives in ``templates/{{ TEMPLATE_PACK_NAME }}/layout/`` directory.
-
-Some advanced users may want to use their own templates, to adapt the layout objects to their use or necessities. There are three ways to override the template that a layout object uses. 
-
-- **Globally**: You override the template of the layout object, for all instances of that layout object you use::
-
-    from crispy_forms.layout import Div
-    Div.template = 'my_div_template.html'
-
-- **Individually**: You can override the template for a specific layout object in a layout::
-
-    Layout(
-        Div(
-            'field1',
-            'field2',
-            template = 'my_div_template.html'
-        )
-    )
-
-- **Overriding templates directory**: This means copying the templates directory into your project and overriding the templates editing them.
-
-Overriding project templates 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-You need to differentiate between layout objects' templates and django-crispy-forms templates. There are some templates that live in ``templates/{{ TEMPLATE_PACK_NAME }}`` that define the form/formset structure, how a field or errors are rendered, etc. They add very little logic and are pretty much basic wrappers for the rest of django-crispy-forms power.
-
-You can overwrite the templates that django-crispy-forms comes geared with using your own. If you have a template pack based on a CSS library, submit it so more people can benefit from it.
-
-.. _`django-uni-form-contrib`: https://github.com/kennethlove/django-uni-form-contrib
-.. _`Bootstrap`: https://github.com/twitter/bootstrap
-
-Creating your own layout objects
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The :ref:`layout objects` bundled with django-crispy-forms are a set of the most seen components that build a form. You will probably be able to do anything you need combining them. Anyway, you may want to create your own components, for doing that, you will need a good grasp of django-crispy-forms. Every layout object must have a method called ``render``. Its prototype should be::
-
-    def render(self, form, form_style, context):
-
-The official layout objects live in ``layout.py`` and ``bootstrap.py``, you may want to have a look at them to fully understand how to proceed. But in general terms, a layout object is a template rendered with some parameters passed.
-
-If you come up with a good idea and design a layout object you think others could benefit from, please open an issue or send a pull request, so django-crispy-forms gets better.
-
-
-Inheriting layouts
-~~~~~~~~~~~~~~~~~~
-
-Imagine you have several forms that share a big chunk of the same layout. There is a way you can create a ``Layout``, reuse and extend it in an easy way. You can have a ``Layout`` as a component of another ``Layout``, let's see an example::
-
-    common_layout = Layout(
-        MultiField("User data",
-            'username',
-            'lastname',
-            'age'
-        )
-    )
-
-    example_layout = Layout(
-        common_layout,
-        Div(
-            'favorite_food',
-            'favorite_bread',
-            css_id = 'favorite-stuff'
-        )
-    )
-
-    example_layout2 = Layout(
-        common_layout,
-        Div(
-            'professional_interests',
-            'job_description', 
-        )
-    )
-
-We have defined a ``common_layout`` that is used as a base for two different layouts: ``example_layout`` and ``example_layout2``, which means that those two layouts will start the same way and then extend the layout in different ways. 
-
-
-Updating layouts on the go
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Layouts can be changed, adapted and generated dynamically. At the moment, ``Layout`` doesn't have an API for handling this, so as in Django forms you will need to access inner attribute ``fields``. Main difference compared to Django forms is that ``fields`` is a Python list and not a dictionary. To sum up all layout objects and ``Layout`` itself hold a ``fields`` list that you can tamper. You can access the layout attached to a helper with::
-
-    form.helper.layout
-
-This is how you would add one layout object at the end of the layout::
-
-    layout.fields.append(HTML("<p>whatever</p>"))
-
-This is how you would add several layout objects::
-
-    layout.fields.extend([
-        HTML("<p>whatever</p>"),
-        Div('add_field_on_the_go')
-    ])
-
-This is how you would replace a layout object::
-
-    layout.fields[2] = HTML("<p>whatever</p>")
-
-This is how you would delete the second layout object::
-
-    layout.fields.pop(1)
-
-This is how you would insert a layout object in the second position::
-
-    layout.fields.insert(1, HTML("<p>whatever</p>"))
-
-.. Warning ::
-
-    Remember always that if you are going to manipulate a helper or layout in a view or any part of your code, you better use an instance level variable.
-
-
-.. _`Be careful how you use static variables in forms`: http://tothinkornottothink.com/post/7157151391/be-careful-how-you-use-static-variables-in-forms 
+.. _`Be careful how you use static variables in forms`: http://tothinkornottothink.com/post/7157151391/be-careful-how-you-use-static-variables-in-forms
